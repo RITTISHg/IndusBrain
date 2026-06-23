@@ -130,114 +130,16 @@ let users: DBUser[] = [
 
 let activeRefreshTokens: Record<string, string> = {}; // username -> refresh token
 
-let auditLogs: AuditLogEntry[] = [
-  {
-    id: "audit-1",
-    timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
-    actor: "admin",
-    role: "Admin",
-    action: "System Setup Complete",
-    status: "Success",
-    details: "INDUS BRAIN enterprise security shield mounted. Roles and cryptographed profiles pre-seeded."
-  },
-  {
-    id: "audit-2",
-    timestamp: new Date(Date.now() - 3600000 * 1.5).toISOString(),
-    actor: "auditor",
-    role: "Auditor",
-    action: "Compliance Review",
-    status: "Success",
-    details: "Queried ASME compliance metrics. Verified 14 Bar operating vents rule."
-  }
-];
+let auditLogs: AuditLogEntry[] = [];
 
-let maintenanceTasks: MaintenanceTask[] = [
-  {
-    id: "task-1",
-    title: "Inspect V-101 Vent Spring",
-    assignedTo: "Supervisor Sarah",
-    status: "Pending",
-    severity: "High",
-    details: "Enforce physical spring load tension testing on Valve V-101 to comply with ASME UG-125 laws.",
-    timestamp: new Date().toISOString()
-  },
-  {
-    id: "task-2",
-    title: "S-Boiler-P1 Recalibration",
-    assignedTo: "Unassigned",
-    status: "Pending",
-    severity: "Medium",
-    details: "Verify absolute pressure transducer feed. High telemetry variance reported during peak 12 Bar load.",
-    timestamp: new Date().toISOString()
-  }
-];
+let maintenanceTasks: MaintenanceTask[] = [];
 
 // Pre-seed some realistic Industrial Knowledge Graph data
-let nodes: DBNode[] = [
-  { id: "asset-1", label: "Deep-Water Steam Facility", type: "Asset", properties: { code: "DWSF-01", status: "Operational", capacity: "450MW", region: "North Sector" } },
-  { id: "machine-1", label: "Boiler B-201", type: "Machine", properties: { code: "BLR-201", status: "Active", pressure_max: "15 Bar", temp_limit: "450C" } },
-  { id: "machine-2", label: "Turbine GT-400", type: "Machine", properties: { code: "TBN-400", status: "Idle", rpm_max: "3600 RPM", stage: "High Pressure" } },
-  { id: "component-1", label: "Relief Valve V-101", type: "Component", properties: { rating: "14 Bar", spring_vessel: "Mechanical", inspection_status: "Verified" } },
-  { id: "component-2", label: "Compressor Blade C-12", type: "Component", properties: { material: "Titanium Alloy", cycles: "14200", fatigue_limit: "25000 cycles" } },
-  { id: "sensor-1", label: "Sensor S-Boiler-P1", type: "Sensor", properties: { reading: "12.4 Bar", frequency: "1Hz", metric: "Pressure" } },
-  { id: "sensor-2", label: "Sensor S-Boiler-T1", type: "Sensor", properties: { reading: "410C", frequency: "1Hz", metric: "Temperature" } },
-  { id: "standard-1", label: "ASME Section VIII", type: "Standard", properties: { category: "Pressure Vessels Code", status: "Compliant" } },
-  { id: "standard-2", label: "OSHA 1910.147 LOTO", type: "Standard", properties: { category: "Lockout Tagout Protocols", compliance_status: "Mandatory" } },
-  { id: "failure-1", label: "Overpressure Explosion", type: "Failure", properties: { risk_level: "Critical", mitigation_device: "Valve V-101", fault_source: "Pressure Buildup" } },
-  { id: "failure-2", label: "Turbine Blade Fatigue", type: "Failure", properties: { risk_level: "High", mitigation_action: "NDT Inspection", fault_source: "Centrifugal Force" } },
-  { id: "activity-1", label: "Valve Vent Safety Calibration", type: "Activity", properties: { schedule: "Quarterly", last_conducted: "2026-05-10", standard_followed: "ASME-PV-2021" } },
-  { id: "activity-2", label: "Blade Non-Destructive Testing", type: "Activity", properties: { schedule: "Semi-Annual", last_conducted: "2026-04-18", technique: "Ultrasonic" } },
-  { id: "operator-1", label: "Samantha Reed (Chief Eng)", type: "Operator", properties: { certification: "ASME Level III", department: "Operations", shift: "Shift-A" } },
-  { id: "operator-2", label: "Marcus Vance (Senior Tech)", type: "Operator", properties: { certification: "OSHA LOTO Master", department: "Maintenance", shift: "Shift-B" } },
-  { id: "location-1", label: "Main Hall A", type: "Location", properties: { facility_sector: "Power Generation", grid_pos: "G-14" } },
-  { id: "location-2", label: "Turbine Deck Suite 4", type: "Location", properties: { facility_sector: "Mechanical Drive", grid_pos: "G-18" } },
-  { id: "incident-1", label: "Primary Vent Failure 2025", type: "Incident", properties: { event_date: "2025-11-12", downtime_hours: "4.5", cost_impact: "$42,000" } },
-  { id: "incident-2", label: "Thermal Transient Warning", type: "Incident", properties: { event_date: "2026-02-04", recovery_action: "Manual Bypass Trigger", duration_mins: "35" } }
-];
+let nodes: DBNode[] = [];
 
-let edges: DBEdge[] = [
-  { id: "e1", source: "asset-1", target: "machine-1", label: "CONTAINS", properties: { sector: "South Wall" } },
-  { id: "e2", source: "asset-1", target: "machine-2", label: "CONTAINS", properties: { sector: "East Wall" } },
-  { id: "e3", source: "machine-1", target: "component-1", label: "HAS_COMPONENT", properties: { installation: "Outlet Flange" } },
-  { id: "e4", source: "machine-2", target: "component-2", label: "HAS_COMPONENT", properties: { installation: "High-Pressure Rotor Stage 1" } },
-  { id: "e5", source: "sensor-1", target: "machine-1", label: "MONITORS", properties: { signal: "4-20mA telemetry" } },
-  { id: "e6", source: "sensor-2", target: "machine-1", label: "MONITORS", properties: { signal: "Serial Bus" } },
-  { id: "e7", source: "machine-1", target: "standard-1", label: "COMPLIES_WITH", properties: { active_license: "ASME-PV-2021" } },
-  { id: "e8", source: "machine-2", target: "standard-2", label: "COMPLIES_WITH", properties: { active_license: "OSHA-LOTO-TBN" } },
-  { id: "e9", source: "machine-1", target: "failure-1", label: "RISK_OF", properties: { fatal_consequence: "True" } },
-  { id: "e10", source: "machine-2", target: "failure-2", label: "RISK_OF", properties: { fatal_consequence: "True" } },
-  { id: "e11", source: "operator-1", target: "machine-1", label: "ASSIGNED_TO", properties: { clearance: "Active Operator" } },
-  { id: "e12", source: "operator-2", target: "activity-1", label: "PERFORMED", properties: { timestamp: "2026-05-10" } },
-  { id: "e13", source: "activity-1", target: "component-1", label: "MAINTAINED", properties: { calibration_offset: "0.02 Bar" } },
-  { id: "e14", source: "activity-2", target: "component-2", label: "MAINTAINED", properties: { crack_assessment: "0.0mm (None)" } },
-  { id: "e15", source: "machine-1", target: "location-1", label: "LOCATED_AT", properties: {} },
-  { id: "e16", source: "machine-2", target: "location-2", label: "LOCATED_AT", properties: {} },
-  { id: "e17", source: "incident-1", target: "component-1", label: "INVOLVED", properties: { damage_level: "Minor" } },
-  { id: "e18", source: "incident-2", target: "machine-1", label: "INVOLVED", properties: { damage_level: "None (Transient only)" } },
-  { id: "e19", source: "incident-1", target: "location-1", label: "OCCURRED_AT", properties: {} },
-  { id: "e20", source: "operator-1", target: "incident-2", label: "RESPONDED_TO", properties: {} }
-];
+let edges: DBEdge[] = [];
 
-let documentChunks: DocumentChunk[] = [
-  {
-    id: "chunk-1",
-    docName: "Boiler_B-201_Manual.pdf",
-    content: "Boiler B-201 is a critical high-pressure steam vessel installed in Main Hall A. The safe operating pressure rating is 15 Bar. Sustained pressure exceeding 15 Bar can trigger structural degradation or catastrophic rupture (Overpressure Explosion). Thermocouple Sensor S-Boiler-T1 and Pressure Sensor S-Boiler-P1 continuous feed telemetry back to the main Operator Dashboard.",
-    metadata: { section: "Sec 1.2: Pressure Parameters", page: 4, category: "Operations" }
-  },
-  {
-    id: "chunk-2",
-    docName: "Safety_Valves_Standard_V1.pdf",
-    content: "All ASME Section VIII vessel compliance require self-actuated emergency relief valves. Safety Valve V-101 is configured in conjunction with Boiler B-201. It is rated to actuate/vent at exactly 14 Bar of gauge pressure to mitigate boiler overpressure hazards. Quarterly load testing of the mechanical spring in V-101 must be enforced and logged in the digital maintenance register.",
-    metadata: { section: "Sec 3: Overpressure Valves", page: 12, category: "Regulatory Compliance" }
-  },
-  {
-    id: "chunk-3",
-    docName: "ASME_Section_VIII_Compliance.txt",
-    content: "The American Society of Mechanical Engineers (ASME) Section VIII rules apply to pressure vessel design, engineering, and active inspection. Under compliance frameworks, every operational pressure vessel must show active maintenance logs for safety relief valves. Temperature threshold warnings must trigger visual alarm flashing above 420C, which is 30C below the peak structural safety limit.",
-    metadata: { section: "Part UG-125: Relief Devices", page: 1, category: "Regulatory Compliance" }
-  }
-];
+let documentChunks: DocumentChunk[] = [];
 
 // Lazy Gemini API Client Initializer
 let aiClient: any = null;
@@ -2181,68 +2083,7 @@ interface LessonLearned {
   tags: string[];
 }
 
-let lessonsLearned: LessonLearned[] = [
-  {
-    id: "lesson-ll-1",
-    title: "Cavitation erosion in high-pressure feedwater inlet",
-    category: "Mechanical",
-    equipment: "Feedwater Pump P-202",
-    incidentDate: "2025-11-12",
-    description: "Discharge valve throttled to less than 15% open caused fluid speed and localized pressure drop below the vapour limit, introducing micro-bubble implosions. This damaged the impeller leading edge.",
-    rootCause: "Operating the centrifugal feedwater pump against high throttling resistance without an active bypass recirculation line.",
-    preventativeAction: "Enforce a minimum bypass flow rule (at least 30L/min) on the SCADA panel. Never run the pump with less than 25% discharge valve clearance.",
-    contributor: "Marcus Vance",
-    tags: ["cavitation", "impeller", "feedwater", "erosion"]
-  },
-  {
-    id: "lesson-ll-2",
-    title: "Turbine secondary bearing journal temperature spike",
-    category: "Mechanical",
-    equipment: "Turbine GT-400",
-    incidentDate: "2026-02-05",
-    description: "Bearing temperature spiked from standard 65C to 98C in under 4 minutes, causing emergency automatic thermal shutdown of GT-400.",
-    rootCause: "Lube oil pressure drop due to microscopic carbonaceous varnish blockage in the orifice filter. S-Vibe-B1 had failed to warn about micro-friction harmonics.",
-    preventativeAction: "Replace oil filter canisters every 5,000 thermal operating hours instead of 8,000. Install continuous laser particle size counter on the secondary return line.",
-    contributor: "Sarah Connor",
-    tags: ["bearing", "lube-oil", "turbine", "overheating"]
-  },
-  {
-    id: "lesson-ll-3",
-    title: "Boiler thermal expansion stress-cracking",
-    category: "Mechanical",
-    equipment: "Boiler B-201",
-    incidentDate: "2026-04-18",
-    description: "Microscopic cracks discovered at the high-pressure header T-joint welds during routine non-destructive ultrasound scan.",
-    rootCause: "Excessive rapid ramp-down cooling cycles (thermal shock exceeding 25C per min) during unscheduled system restarts.",
-    preventativeAction: "Enforce a software-governed cool-down rate limiter (restricted to maximal 5.5C change rate per minute) inside the main controller PLC firmware.",
-    contributor: "David Mills",
-    tags: ["boiler", "thermal-shock", "cracks", "welding"]
-  },
-  {
-    id: "lesson-ll-4",
-    title: "Ground insulation breakdown in primary generator terminal box",
-    category: "Electrical",
-    equipment: "Generator G-301",
-    incidentDate: "2026-05-30",
-    description: "Ground fault trip occurred during high atmospheric humidity levels, bringing down the entire sub-grid loop.",
-    rootCause: "Moisture accumulation inside the main terminal enclosure due to degraded structural silicone gasket bindings.",
-    preventativeAction: "Mandate annual insulation resistance (Megger) checks at 5kV. Replace all terminal enclosure seal gaskets with synthetic fluoroelastomer high-barrier seals.",
-    contributor: "Nadia Petrova",
-    tags: ["insulation", "generator", "gasket", "ground-fault"]
-  },
-  {
-    id: "lesson-ll-5",
-    title: "Auxiliary safety air receiver pressure safety valve lockup",
-    category: "Safety",
-    equipment: "Valve V-101",
-    incidentDate: "2026-01-10",
-    description: "The valve spring failed to actuate at nominal margin (14.2 Bar), leading to manual backup venting.",
-    rootCause: "Extended inspection neglect leading to localized atmospheric moisture corrosion on the mechanical load spring coil.",
-    preventativeAction: "Establish compulsory hand-lever manual lift tests every 30 days. Maintain high-resolution calibration log entries on the shared dashboard.",
-    contributor: "Hassan Abbas",
-    tags: ["relief-valve", "pressure", "spring", "calibration"]
-  }
-];
+let lessonsLearned: LessonLearned[] = [];
 
 // Endpoint to list lessons
 app.get("/api/lessons", authenticateToken, (req, res) => {

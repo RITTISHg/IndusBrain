@@ -12,44 +12,6 @@ interface RAGEngineProps {
   userRole: UserRole;
 }
 
-const SAMPLE_DOCUMENTS = [
-  {
-    title: "1. Turbine Rotor Maintenance Spec",
-    type: "manual",
-    category: "Operational Manual",
-    fileName: "turbine_gt400_rotor_protocol.txt",
-    content: "Siemens Gas Turbine GT-400 Maintenance Protocol. Nominal rotor speed is 9500 RPM. Main housing assembly is fitted with dual-stage overspeed protection trips. High vibration triggers automated emergency shutdown if radial vibration sensor VIB-GT400-X1 readings exceed 4.2 mm/s for more than 3 consecutive seconds. Daily insulation resistance testing is mandated as per manufacturer guidelines to prevent stator core damage."
-  },
-  {
-    title: "2. Boiler Relief Valve Audit Certification",
-    type: "compliance",
-    category: "Regulatory Compliance",
-    fileName: "safety_valve_asme_sec_viii_compliance.txt",
-    content: "ASME Section VIII Div 1 mechanical safety audit certificate for Safety Valve V-101. Safety valve configured to actuate at exactly 14.0 Bar of gauge pressure on steam line and vents boiler B-201. Annual loading spring tests must check for structural fatigue. Calibration checked on June 18, 2026. Certified compliant under National Pressure Vessel Safety Code Inspector register #98321."
-  },
-  {
-    title: "3. Nozzle Schematic Layout Annotation",
-    type: "drawing",
-    category: "Sensor Engineering Specifications",
-    fileName: "boiler_nozzle_schematic_annotations.txt",
-    content: "Drawing DWG-B201-99: Boiler B-201 structural nozzle relief layouts. Detail view A. Inlet connection flange is configured as 3-inch 300# ANSI companion flange. Structural thickness 12.8 mm. PaddleOCR identified annotation text: 'DANGER: HIGH PRESSURE SHELL: VERIFY SEAL WELD AS PER ASME SEC IX'. Relieving pipe must direct discharge to safe vent stack."
-  },
-  {
-    title: "4. Thermocouple Drift Incident Log",
-    type: "incident",
-    category: "Emergency Protocols",
-    fileName: "inc_2026_t1_drift_log.txt",
-    content: "Incident Log INC-2026-88. Incident date: June 14, 2026. Equipment: Thermocouple Senator S-Boiler-T1. Description: Sensor registered sudden downward thermal drift of 42 degrees C within a 60-second span while boiler pressure was constant. Caused spurious alarm. Investigation found cable shield deterioration adjacent to mechanical manifold B-201. Maintenance team replaced shielded cable and ran calibration tests."
-  },
-  {
-    title: "5. LOTO Safety Valve Isolation Procedure",
-    type: "safety",
-    category: "Emergency Protocols",
-    fileName: "loto_purge_boiler_b201_safety.txt",
-    content: "Standard Lockout/Tagout Safety Protocol (LOTO) for Purging Boiler B-201. Prior to entering high-pressure vessel shroud, operators must lock electrical breaker panel LOTO-12A powering raw fuel feed pumps. Close gas valve GV-201 and lock mechanical latch in isolated position. Verify line pressure indicates 0.0 Bar. Compliance under OSHA standard Part 1910.147."
-  }
-];
-
 export default function RAGEngine({ token, userRole }: RAGEngineProps) {
   const [activeTab, setActiveTab] = useState<'search' | 'ingest'>('ingest');
   const [chunks, setChunks] = useState<DocumentChunk[]>([]);
@@ -84,6 +46,48 @@ export default function RAGEngine({ token, userRole }: RAGEngineProps) {
   const logsEndRef = useRef<HTMLDivElement>(null);
   const hasWritePermission = userRole === UserRole.Admin || userRole === UserRole.Engineer;
 
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileChange = (file: File) => {
+    if (!file) return;
+    setUploadedFileName(file.name);
+    setIndexingFeedback("");
+    setPipelineLogs([]);
+    setPipelineStep(0);
+    setExtractedMetadata(null);
+    
+    // Auto-detect doc type and category based on filename keywords
+    const nameLower = file.name.toLowerCase();
+    if (nameLower.includes("manual") || nameLower.includes("spec") || nameLower.includes("protocol") || nameLower.includes("turbine")) {
+      setUploadedDocType("manual");
+      setUploadedCategory("Operational Manual");
+    } else if (nameLower.includes("compliance") || nameLower.includes("asme") || nameLower.includes("rule") || nameLower.includes("audit")) {
+      setUploadedDocType("compliance");
+      setUploadedCategory("Regulatory Compliance");
+    } else if (nameLower.includes("drawing") || nameLower.includes("schematic") || nameLower.includes("dwg")) {
+      setUploadedDocType("drawing");
+      setUploadedCategory("Sensor Engineering Specifications");
+    } else if (nameLower.includes("incident") || nameLower.includes("log") || nameLower.includes("fault") || nameLower.includes("drift")) {
+      setUploadedDocType("incident");
+      setUploadedCategory("Emergency Protocols");
+    } else if (nameLower.includes("safety") || nameLower.includes("loto") || nameLower.includes("isolation")) {
+      setUploadedDocType("safety");
+      setUploadedCategory("Emergency Protocols");
+    } else if (nameLower.includes("report") || nameLower.includes("inspection")) {
+      setUploadedDocType("report");
+      setUploadedCategory("Operational Manual");
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result;
+      if (typeof text === 'string') {
+        setUploadedText(text);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const fetchChunks = async () => {
     try {
       const resp = await fetch("/api/rag/chunks", {
@@ -109,18 +113,6 @@ export default function RAGEngine({ token, userRole }: RAGEngineProps) {
       logsEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [pipelineLogs]);
-
-  // Load a sample template
-  const loadSample = (sample: typeof SAMPLE_DOCUMENTS[0]) => {
-    setUploadedFileName(sample.fileName);
-    setUploadedText(sample.content);
-    setUploadedDocType(sample.type);
-    setUploadedCategory(sample.category);
-    setIndexingFeedback("");
-    setPipelineLogs([]);
-    setPipelineStep(0);
-    setExtractedMetadata(null);
-  };
 
   // Run Real-Time Chroma Retrieve & Gemini Synthesize
   const handleRagSearch = async (e: React.FormEvent) => {
@@ -301,43 +293,7 @@ export default function RAGEngine({ token, userRole }: RAGEngineProps) {
           {/* Main Workspace Configuration Panel */}
           <div className="lg:col-span-8 flex flex-col gap-6">
             
-            {/* Quick Templates Selector */}
-            <div className="bg-slate-900 border border-slate-800 rounded-sm p-5 shadow-xl">
-              <h2 className="font-bold text-slate-100 text-xs tracking-wider uppercase font-mono mb-3 text-slate-400 flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
-                <span>Preloaded Heavy Industrial Documents (Instant Testing Templates)</span>
-              </h2>
-              <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
-                Click any of the high-fidelity pre-structured documents below to load its raw contents, configure target pipeline properties, and execute index compilation.
-              </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {SAMPLE_DOCUMENTS.map((doc, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => loadSample(doc)}
-                    className={`p-3 border rounded-sm text-left transition duration-150 relative overflow-hidden group cursor-pointer ${
-                      uploadedFileName === doc.fileName 
-                        ? 'border-indigo-500 bg-indigo-950/20 text-slate-100 shadow-md' 
-                        : 'border-slate-800 hover:border-slate-700 bg-slate-950/70 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <div className="font-semibold text-xs font-mono group-hover:text-indigo-400 transition truncate mb-1">
-                      {doc.title}
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-[8px] font-mono bg-slate-900 border border-slate-800 text-slate-500 rounded-sm px-1.5 py-0.5 uppercase tracking-wide">
-                        {doc.type}
-                      </span>
-                      <span className="text-[9px] font-mono text-slate-600 group-hover:text-slate-450 transition">
-                        Load Template →
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* PC / Device Drag and Drop Uploader is available below inside Ingestion Parameters */}
 
             {/* Core Pipeline Stage Visualizer */}
             <div className="bg-slate-900 border border-slate-800 rounded-sm p-6 shadow-xl">
@@ -544,6 +500,61 @@ export default function RAGEngine({ token, userRole }: RAGEngineProps) {
 
               <form onSubmit={handlePipelineIngestion} className="space-y-4">
                 
+                {/* Local Device/PC Drag and Drop Uploader */}
+                <div 
+                  id="pc-document-dropzone"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (hasWritePermission) setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    if (!hasWritePermission) return;
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleFileChange(file);
+                  }}
+                  className={`border border-dashed p-4 rounded-sm transition duration-150 text-center flex flex-col items-center justify-center gap-2 relative group cursor-pointer ${
+                    !hasWritePermission
+                      ? 'border-slate-850 bg-slate-950/20 opacity-50 cursor-not-allowed'
+                      : isDragging
+                        ? 'border-indigo-500 bg-indigo-950/30 text-indigo-400 scale-[1.01]'
+                        : 'border-slate-800 hover:border-indigo-500 bg-slate-950/45 text-slate-400 hover:text-slate-200'
+                  }`}
+                  onClick={() => {
+                    if (hasWritePermission) {
+                      document.getElementById("local-file-selector")?.click();
+                    }
+                  }}
+                >
+                  <input 
+                    type="file"
+                    id="local-file-selector"
+                    className="hidden"
+                    accept=".txt,.log,.json,.csv,.md,.html,.xml"
+                    disabled={!hasWritePermission}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileChange(file);
+                    }}
+                  />
+                  <div className="p-2 bg-slate-900 border border-slate-800 rounded-sm text-indigo-400 group-hover:text-indigo-300 group-hover:border-indigo-500/50 transition">
+                    <UploadCloud className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono font-bold tracking-wider uppercase block text-slate-250">
+                      Local Device File Intake
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-500 block mt-0.5">
+                      Drag & drop any document or click to browse your PC
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[8px] font-mono bg-slate-900/60 border border-slate-850 px-2 py-0.5 rounded-sm text-slate-500">
+                    <span>PC / DEVICE DISK ATTACHMENT PORT</span>
+                  </div>
+                </div>
+
                 {/* File Upload details */}
                 <div className="space-y-3 p-3 bg-slate-950/80 border border-slate-855 rounded-sm">
                   <div className="text-[9.5px] font-mono font-bold text-slate-450 uppercase flex items-center justify-between">

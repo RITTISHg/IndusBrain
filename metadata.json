@@ -1,0 +1,6 @@
+{
+  "name": "INDUS BRAIN",
+  "description": "An AI-powered industrial knowledge intelligence platform featuring multi-agent workflows, graph exploratory intelligence, and industrial RAG.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

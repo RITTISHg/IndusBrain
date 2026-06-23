@@ -332,14 +332,6 @@ export default function App() {
     setRotateLog([]);
   };
 
-  // Quick preset logger for testing demo roles
-  const loginWithPreset = (uname: string, pword: string) => {
-    setLoginUsername(uname);
-    setLoginPassword(pword);
-    setAuthError(null);
-    setAuthSuccess(null);
-  };
-
   // Fetch audit trail logs securely
   const fetchAuditLogs = async () => {
     if (!userProfile?.token) return;
@@ -529,49 +521,14 @@ export default function App() {
                     Welcome to the secure orchestration interface of INDUS BRAIN. Enter verified credentials or provision a role-specific technician token.
                   </p>
 
-                  <div className="border border-slate-800 bg-slate-950/80 p-3.5 rounded-sm font-mono space-y-2.5">
-                    <h3 className="text-[10px] font-bold text-amber-500 tracking-wider uppercase mb-1 flex items-center gap-1.5">
-                      <KeyRound className="w-3.5 h-3.5" />
-                      <span>Seeded Sandbox Accounts</span>
+                  <div className="border border-slate-800 bg-slate-950/40 p-4 rounded-sm font-mono space-y-2">
+                    <h3 className="text-[10px] font-bold text-indigo-400 tracking-wider uppercase mb-1 flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Security Advisory</span>
                     </h3>
-                    <div className="divide-y divide-slate-900 space-y-1.5 text-[10px] text-slate-350">
-                      <div className="pt-1.5 flex items-center justify-between">
-                        <span>Admin Profile (Full Control)</span>
-                        <button 
-                          onClick={() => loginWithPreset("admin", "admin123")}
-                          className="bg-slate-900 hover:bg-indigo-600 hover:text-white border border-slate-800 px-2 py-0.5 rounded-sm transition cursor-pointer text-[9px]"
-                        >
-                          Use admin
-                        </button>
-                      </div>
-                      <div className="pt-1.5 flex items-center justify-between">
-                        <span>Chief Engineer dave</span>
-                        <button 
-                          onClick={() => loginWithPreset("engineer", "engineer123")}
-                          className="bg-slate-900 hover:bg-indigo-600 hover:text-white border border-slate-800 px-2 py-0.5 rounded-sm transition cursor-pointer text-[9px]"
-                        >
-                          Use engineer
-                        </button>
-                      </div>
-                      <div className="pt-1.5 flex items-center justify-between">
-                        <span>Supervisor Sarah (Maint)</span>
-                        <button 
-                          onClick={() => loginWithPreset("maintenance", "maint123")}
-                          className="bg-slate-900 hover:bg-indigo-600 hover:text-white border border-slate-800 px-2 py-0.5 rounded-sm transition cursor-pointer text-[9px]"
-                        >
-                          Use maint
-                        </button>
-                      </div>
-                      <div className="pt-1.5 flex items-center justify-between">
-                        <span>Senior Compliancier Paul</span>
-                        <button 
-                          onClick={() => loginWithPreset("auditor", "audit123")}
-                          className="bg-slate-900 hover:bg-indigo-600 hover:text-white border border-slate-800 px-2 py-0.5 rounded-sm transition cursor-pointer text-[9px]"
-                        >
-                          Use auditor
-                        </button>
-                      </div>
-                    </div>
+                    <p className="text-[10px] text-slate-400 leading-relaxed font-sans">
+                      All connection profiles are strictly authenticated. Under ASME/OSHA digital logging protocols, unauthorized access attempts will be recorded on the system ledger. Register a secure technician ID if you do not have credential access.
+                    </p>
                   </div>
                 </div>
 
@@ -619,7 +576,7 @@ export default function App() {
                       <label className="text-[10px] font-mono text-slate-500 block mb-1 uppercase font-bold tracking-wider">Username</label>
                       <input
                         type="text"
-                        placeholder="Type demo username e.g. admin"
+                        placeholder="Enter your secure username"
                         required
                         value={loginUsername}
                         onChange={e => setLoginUsername(e.target.value)}
@@ -630,7 +587,7 @@ export default function App() {
                       <label className="text-[10px] font-mono text-slate-500 block mb-1 uppercase font-bold tracking-wider">Access PIN / Password</label>
                       <input
                         type="password"
-                        placeholder="Type sandboxed pass e.g. admin123"
+                        placeholder="Enter your password"
                         required
                         value={loginPassword}
                         onChange={e => setLoginPassword(e.target.value)}

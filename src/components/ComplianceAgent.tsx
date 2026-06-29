@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   FileText, ShieldCheck, AlertTriangle, CheckCircle, Clock, 
   Settings, RefreshCw, BarChart2, BookOpen, Layers, 
@@ -45,45 +45,81 @@ interface AgentTraceNode {
   durationMs: number;
 }
 
-const PRESET_STANDARDS = [
-  {
-    id: "asme-vessel",
-    name: "ASME Section VIII (Pressure Vessels)",
-    category: "Mechanical Safety",
-    description: "Evaluates safety relief device Actuation pressures, recalibration parameters, and continuous pressure transducer drift.",
-    defaultMetric: "14.2 Bar",
-    defaultDays: 120
-  },
-  {
-    id: "osha-hazardous",
-    name: "OSHA 1910.147 (Lockout/Tagout)",
-    category: "Hazards Isolation",
-    description: "Audits mechanical isolation padlocks, undocumented energy bypass incidents, and shift transition team sign-offs.",
-    defaultMetric: "0 Bypass events",
-    defaultDays: 45
-  },
-  {
-    id: "iso-vibration",
-    name: "ISO 10816-3 (Rotary Vibration Limits)",
-    category: "Mechanical Fatigue",
-    description: "Examines turbine and centrifugal compressor radial displacement amplitude offsets against strict Class III regulatory bands.",
-    defaultMetric: "4.8 mm/s",
-    defaultDays: 180
-  },
-  {
-    id: "iso-combustion",
-    name: "ISO 50001 (Thermal & Fuel Efficiency)",
-    category: "Efficiency Audits",
-    description: "Measures greenhouse compliance boundaries, thermal exhaust gas insulation metrics, and combustion drift margins.",
-    defaultMetric: "435C Exhaust",
-    defaultDays: 365
-  }
-];
+const fallbackStandard = {
+  id: "custom-generic",
+  name: "General Regulatory Code Audit",
+  category: "General Safety",
+  description: "Examines default safety criteria. Register custom assets in the Asset Health Tracker to generate physical directive compliance bounds.",
+  defaultMetric: "0 Alerts",
+  defaultDays: 30,
+  assetName: "N/A",
+  assetValue: 0,
+  assetLimit: 1,
+  assetUnit: ""
+};
 
 export default function ComplianceAgent({ token, userRole }: ComplianceAgentProps) {
-  const [selectedStandard, setSelectedStandard] = useState(PRESET_STANDARDS[0]);
+  const [customAssets] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("indus_assets");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const dynamicStandards = customAssets.length > 0 ? customAssets.map(asset => {
+    let standardName = "ISO Standard";
+    let category = "General Safety";
+    let desc = `Continuous audit evaluation for ${asset.name} tracking safety boundaries.`;
+    if (asset.type === "boiler") {
+      standardName = `ASME Sec VIII - ${asset.name}`;
+      category = "Mechanical Safety";
+      desc = `Evaluates safety relief device Actuation pressures and continuous pressure transducer drift on ${asset.name}.`;
+    } else if (asset.type === "turbine") {
+      standardName = `ISO 10816-3 - ${asset.name}`;
+      category = "Mechanical Fatigue";
+      desc = `Examines dynamic vibration amplitude offsets against strict Class III regulatory bands on ${asset.name}.`;
+    } else if (asset.type === "valve") {
+      standardName = `OSHA 1910.147 - ${asset.name}`;
+      category = "Hazards Isolation";
+      desc = `Audits mechanical isolation padlocks, undocumented energy bypass incidents, and feedback safety state on ${asset.name}.`;
+    } else if (asset.type === "pump") {
+      standardName = `ISO 13709 - ${asset.name}`;
+      category = "Fluid Dynamics";
+      desc = `Measures cavitation indices and minimum flow bond requirements on ${asset.name}.`;
+    }
+
+    return {
+      id: asset.id,
+      name: standardName,
+      category,
+      description: desc,
+      defaultMetric: asset.type === "valve" 
+        ? (asset.metricValue === 0 ? "NOMINAL" : asset.metricValue === 1 ? "STIFF" : "JAMMED")
+        : `${asset.metricValue} ${asset.metricUnit}`,
+      defaultDays: 120,
+      assetName: asset.name,
+      assetValue: asset.metricValue,
+      assetLimit: asset.limitValue,
+      assetUnit: asset.metricUnit
+    };
+  }) : [];
+
+  const [selectedStandard, setSelectedStandard] = useState(dynamicStandards[0] || fallbackStandard);
   const [daysOverdue, setDaysOverdue] = useState(120);
-  const [activeMetric, setActiveMetric] = useState("14.2 Bar");
+  const [activeMetric, setActiveMetric] = useState(selectedStandard.defaultMetric);
+
+  useEffect(() => {
+    if (dynamicStandards.length > 0) {
+      setSelectedStandard(dynamicStandards[0]);
+      setActiveMetric(dynamicStandards[0].defaultMetric);
+    } else {
+      setSelectedStandard(fallbackStandard);
+      setActiveMetric(fallbackStandard.defaultMetric);
+    }
+  }, [customAssets]);
+
   const [auditChecklist, setAuditChecklist] = useState<Record<string, boolean>>({
     "calib": true,
     "signs": false,
@@ -197,32 +233,38 @@ export default function ComplianceAgent({ token, userRole }: ComplianceAgentProp
             {/* Selection Grid */}
             <div className="space-y-2">
               <span className="text-[10px] font-mono tracking-wider text-slate-500 block uppercase">Industrial Directives:</span>
-              {PRESET_STANDARDS.map((std) => (
-                <button
-                  key={std.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedStandard(std);
-                    setDaysOverdue(std.defaultDays);
-                    setActiveMetric(std.defaultMetric);
-                  }}
-                  className={`w-full text-left p-3 rounded-lg border transition-all duration-200 cursor-pointer ${
-                    selectedStandard.id === std.id
-                      ? "bg-indigo-950/20 border-indigo-500/40 text-slate-200 font-semibold"
-                      : "bg-slate-900/45 border-slate-850 hover:bg-slate-900 text-slate-400 hover:text-slate-350"
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-1 text-xs">
-                    <span className="font-semibold truncate max-w-[210px]">{std.name}</span>
-                    <span className="text-[9px] font-mono text-indigo-400 bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-500/10 whitespace-nowrap">
-                      {std.category}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 leading-normal line-clamp-1">
-                    {std.description}
-                  </p>
-                </button>
-              ))}
+              {dynamicStandards.length === 0 ? (
+                <div className="p-3 bg-slate-900/30 border border-slate-850 rounded-lg text-slate-500 text-[11px] font-mono italic">
+                  No active assets registered. Please register assets in the Asset Health Tracker to auto-compile regulatory standards.
+                </div>
+              ) : (
+                dynamicStandards.map((std) => (
+                  <button
+                    key={std.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedStandard(std);
+                      setDaysOverdue(std.defaultDays);
+                      setActiveMetric(std.defaultMetric);
+                    }}
+                    className={`w-full text-left p-3 rounded-lg border transition-all duration-200 cursor-pointer ${
+                      selectedStandard.id === std.id
+                        ? "bg-indigo-950/20 border-indigo-500/40 text-slate-200 font-semibold"
+                        : "bg-slate-900/45 border-slate-850 hover:bg-slate-900 text-slate-400 hover:text-slate-350"
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-1 text-xs">
+                      <span className="font-semibold truncate max-w-[210px]">{std.name}</span>
+                      <span className="text-[9px] font-mono text-indigo-400 bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-500/10 whitespace-nowrap">
+                        {std.category}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-normal line-clamp-1">
+                      {std.description}
+                    </p>
+                  </button>
+                ))
+              )}
             </div>
 
             {/* Input Variables Box */}

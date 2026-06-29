@@ -135,11 +135,173 @@ let auditLogs: AuditLogEntry[] = [];
 let maintenanceTasks: MaintenanceTask[] = [];
 
 // Pre-seed some realistic Industrial Knowledge Graph data
-let nodes: DBNode[] = [];
+let nodes: DBNode[] = [
+  {
+    id: "boiler-b201",
+    label: "Boiler B-201 Steam Vessel",
+    type: "Machine",
+    properties: {
+      status: "active",
+      code: "BLR-201",
+      designPressure: "15.0 Bar",
+      volume: "4500 Liters",
+      location: "East Wing Power Block"
+    }
+  },
+  {
+    id: "valve-v101",
+    label: "Relief Valve V-101",
+    type: "Component",
+    properties: {
+      status: "monitored",
+      type: "Spring-loaded Safety Valve",
+      setPressure: "13.5 Bar",
+      lastCalibrated: "2026-03-15"
+    }
+  },
+  {
+    id: "sensor-p1",
+    label: "Pressure Transducer S-Boiler-P1",
+    type: "Sensor",
+    properties: {
+      status: "active",
+      metric: "Live Steam Pressure",
+      unit: "Bar",
+      frequency: "10Hz"
+    }
+  },
+  {
+    id: "standard-asme",
+    label: "ASME Section VIII Boiler Code",
+    type: "Standard",
+    properties: {
+      category: "Pressure Vessel Safety",
+      complianceLimit: "Max 110% design pressure",
+      regulatoryBody: "ASME Standards Board"
+    }
+  },
+  {
+    id: "turbine-gt400",
+    label: "Gas Turbine GT-400 Bearing",
+    type: "Machine",
+    properties: {
+      status: "active",
+      code: "GT-400",
+      maxRPM: "3600 RPM",
+      oilTempLimit: "95°C"
+    }
+  },
+  {
+    id: "sensor-v1",
+    label: "Radial Vibration Monitor S-Turbine-V1",
+    type: "Sensor",
+    properties: {
+      status: "active",
+      metric: "Bearing Displacement Velocity",
+      unit: "mm/s",
+      frequency: "100Hz"
+    }
+  },
+  {
+    id: "standard-iso",
+    label: "ISO 10816-3 Rotary Limits",
+    type: "Standard",
+    properties: {
+      category: "Mechanical Fatigue Standards",
+      warningThreshold: "4.2 mm/s",
+      criticalTripThreshold: "7.1 mm/s"
+    }
+  }
+];
 
-let edges: DBEdge[] = [];
+let edges: DBEdge[] = [
+  {
+    id: "edge-1",
+    source: "sensor-p1",
+    target: "boiler-b201",
+    label: "MONITORS",
+    properties: { since: "2024-01-10" }
+  },
+  {
+    id: "edge-2",
+    source: "boiler-b201",
+    target: "valve-v101",
+    label: "HAS_COMPONENT",
+    properties: { installation: "Primary Outlet Vent" }
+  },
+  {
+    id: "edge-3",
+    source: "valve-v101",
+    target: "standard-asme",
+    label: "COMPLIES_WITH",
+    properties: { auditStatus: "Approved" }
+  },
+  {
+    id: "edge-4",
+    source: "sensor-v1",
+    target: "turbine-gt400",
+    label: "MONITORS",
+    properties: { mounting: "Radial Shaft Bracket B" }
+  },
+  {
+    id: "edge-5",
+    source: "turbine-gt400",
+    target: "standard-iso",
+    label: "COMPLIES_WITH",
+    properties: { auditStatus: "Passed Calibration" }
+  }
+];
 
-let documentChunks: DocumentChunk[] = [];
+let documentChunks: DocumentChunk[] = [
+  {
+    id: "chunk-1",
+    docName: "ASME_Section_VIII_Pressure_Limits.txt",
+    content: "ASME Sec VIII Boiler Vessel Code dictates that all primary steam generation chambers over 100L volume must be equipped with at least two redundant spring-assisted relief safety valves calibrated to open fully at no more than 110% of maximum design pressure (13.5 Bar on Boiler B-201). Manual bypass controls are strictly forbidden during standard operating shifts.",
+    metadata: {
+      section: "Sec VIII Div 1",
+      page: 12,
+      category: "Safety Regulations",
+      equipmentCode: "Boiler B-201",
+      asmeCode: "ASME Section VIII",
+      safetySeverity: "Critical",
+      wordCount: 65,
+      processedBy: "Admin OCR",
+      embeddingModel: "text-embedding-004"
+    }
+  },
+  {
+    id: "chunk-2",
+    docName: "ISO_10816_Vibration_SOP.txt",
+    content: "For industrial machines with high dynamic speeds (Class III engines, rotary gas compressors and turbines), radial vibration velocities measured on bearing blocks must not exceed 4.2 mm/s (Warning stage) and 7.1 mm/s (Emergency shutdown trip). Constant calibration drift on radial monitor S-Turbine-V1 must be investigated within 12 hours of warning triggering.",
+    metadata: {
+      section: "Section 3.2",
+      page: 4,
+      category: "Maintenance Guide",
+      equipmentCode: "Turbine GT-400",
+      asmeCode: "N/A",
+      safetySeverity: "High",
+      wordCount: 68,
+      processedBy: "Admin OCR",
+      embeddingModel: "text-embedding-004"
+    }
+  },
+  {
+    id: "chunk-3",
+    docName: "OSHA_LOTO_Lockout_Procedure.txt",
+    content: "Lockout/Tagout (LOTO) requirements for safety relief valve inspection require full electrical isolating breakers to be locked open at MCC-4 Panel, manual block valves physically closed, locked, and tagged, and residual line pressure fully vented via auxiliary bypass valves before physical removal of the ASME relief spring.",
+    metadata: {
+      section: "OSHA 1910.147",
+      page: 8,
+      category: "Physical Isolation SOP",
+      equipmentCode: "Relief Valve V-101",
+      asmeCode: "N/A",
+      safetySeverity: "Critical",
+      wordCount: 54,
+      processedBy: "Admin OCR",
+      embeddingModel: "text-embedding-004"
+    }
+  }
+];
 
 // Lazy Gemini API Client Initializer
 let aiClient: any = null;

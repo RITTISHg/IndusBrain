@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Cpu, Play, AlertTriangle, ShieldAlert, CheckCircle, Clock, 
   Activity, ArrowRight, Layers, FileText, BarChart2, ShieldCheck, 
@@ -47,29 +47,53 @@ interface AgentStepTrace {
   duration: number;
 }
 
-const PRESET_INCIDENTS = [
-  {
-    id: "boiler-overpressure",
-    title: "Boiler B-201 Steam Overpressure Event",
-    equipment: "Boiler B-201",
-    symptoms: "High pressure transducer variance at 14.2 Bar. Back-end automatic trip engaged safety vents."
-  },
-  {
-    id: "turbine-vibration-crack",
-    title: "Turbine GT-400 Dynamic Vibration Signal",
-    equipment: "Turbine GT-400",
-    symptoms: "Rotor radial monitor recorded an anomalous frequency deflection beyond nominal 350Hz boundaries."
-  },
-  {
-    id: "valve-mechanical-jam",
-    title: "Valve V-101 Calibration Failure Signal",
-    equipment: "Relief Valve V-101",
-    symptoms: "Mechanical feedback reports mechanical spring latch corrosion and delay in standard relief venting sequence."
-  }
-];
+const fallbackIncident = {
+  id: "custom-generic",
+  title: "General Unspecified Telemetry Incident",
+  equipment: "N/A",
+  symptoms: "Please register custom assets in the Asset Health dashboard to begin, or type custom symptoms below."
+};
 
 export default function RcaAgent({ token, userRole }: RcaAgentProps) {
-  const [selectedIncident, setSelectedIncident] = useState(PRESET_INCIDENTS[0]);
+  const [customAssets] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("indus_assets");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const dynamicIncidents = customAssets.length > 0 ? customAssets.map(asset => {
+    let symptomMsg = "";
+    if (asset.type === "boiler") {
+      symptomMsg = `Continuous high pressure transducer variance noted at ${asset.metricValue} ${asset.metricUnit}. Operational limit is set to ${asset.limitValue} ${asset.metricUnit}.`;
+    } else if (asset.type === "turbine") {
+      symptomMsg = `Abnormal bearing vibration readings monitored at ${asset.metricValue} ${asset.metricUnit}, exceeding nominal vibration threshold limit of ${asset.limitValue} ${asset.metricUnit}.`;
+    } else if (asset.type === "valve") {
+      symptomMsg = `Mechanical feed pressure state feedback reports mechanical spring latch degradation or delayed valve venting sequence. State: ${asset.metricValue === 0 ? "NOMINAL" : asset.metricValue === 1 ? "STIFF" : "JAMMED"}.`;
+    } else {
+      symptomMsg = `Fluid cavitation coefficient anomaly calculated at ${asset.metricValue}, exceeding critical boundary bounds of ${asset.limitValue}.`;
+    }
+
+    return {
+      id: asset.id,
+      title: `${asset.name} Telemetry Incident`,
+      equipment: asset.name,
+      symptoms: symptomMsg
+    };
+  }) : [];
+
+  const [selectedIncident, setSelectedIncident] = useState(dynamicIncidents[0] || fallbackIncident);
+
+  useEffect(() => {
+    if (dynamicIncidents.length > 0) {
+      setSelectedIncident(dynamicIncidents[0]);
+    } else {
+      setSelectedIncident(fallbackIncident);
+    }
+  }, [customAssets]);
+
   const [customSymptoms, setCustomSymptoms] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
@@ -149,32 +173,38 @@ export default function RcaAgent({ token, userRole }: RcaAgentProps) {
             {/* Presets List */}
             <div className="space-y-2.5 mb-4">
               <span className="text-[10px] font-mono tracking-wider text-slate-500 block uppercase">Pre-registered Signals:</span>
-              {PRESET_INCIDENTS.map((inc) => (
-                <button
-                  key={inc.id}
-                  type="button"
-                  disabled={isAnalyzing}
-                  onClick={() => {
-                    setSelectedIncident(inc);
-                    setCustomSymptoms("");
-                  }}
-                  className={`w-full text-left p-3 rounded-lg border text-xs leading-normal transition-all duration-200 cursor-pointer ${
-                    selectedIncident.id === inc.id 
-                      ? "bg-slate-900 border-orange-500/40 text-slate-200 font-semibold" 
-                      : "bg-slate-900/45 border-slate-850 hover:bg-slate-900 text-slate-400 hover:text-slate-300"
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-1 font-sans">
-                    <span className="font-medium truncate max-w-[200px]">{inc.title}</span>
-                    <span className="text-[10px] font-mono text-orange-400 bg-orange-950/20 px-1.5 py-0.5 rounded border border-orange-500/10">
-                      {inc.equipment}
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-mono text-slate-500 truncate line-clamp-1">
-                    {inc.symptoms}
-                  </p>
-                </button>
-              ))}
+              {dynamicIncidents.length === 0 ? (
+                <div className="p-3 bg-slate-900/30 border border-slate-850 rounded-lg text-slate-500 text-[11px] font-mono italic">
+                  No active assets registered. Please register assets in the Asset Health Tracker to auto-compile telemetry failure signals.
+                </div>
+              ) : (
+                dynamicIncidents.map((inc) => (
+                  <button
+                    key={inc.id}
+                    type="button"
+                    disabled={isAnalyzing}
+                    onClick={() => {
+                      setSelectedIncident(inc);
+                      setCustomSymptoms("");
+                    }}
+                    className={`w-full text-left p-3 rounded-lg border text-xs leading-normal transition-all duration-200 cursor-pointer ${
+                      selectedIncident.id === inc.id 
+                        ? "bg-slate-900 border-orange-500/40 text-slate-200 font-semibold" 
+                        : "bg-slate-900/45 border-slate-850 hover:bg-slate-900 text-slate-400 hover:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-1 font-sans">
+                      <span className="font-medium truncate max-w-[200px]">{inc.title}</span>
+                      <span className="text-[10px] font-mono text-orange-400 bg-orange-950/20 px-1.5 py-0.5 rounded border border-orange-500/10">
+                        {inc.equipment}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-mono text-slate-500 truncate line-clamp-1">
+                      {inc.symptoms}
+                    </p>
+                  </button>
+                ))
+              )}
             </div>
 
             {/* Custom symptoms textarea */}

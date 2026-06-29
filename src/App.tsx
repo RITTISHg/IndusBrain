@@ -997,7 +997,7 @@ export default function App() {
                         <div className="flex items-center gap-2.5 max-w-sm w-full">
                           <input
                             type="text"
-                            placeholder="Type keyword e.g. B-201, User, Successful..."
+                            placeholder="Type keyword e.g. Login, User, Successful..."
                             value={auditSearch}
                             onChange={e => setAuditSearch(e.target.value)}
                             className="w-full text-xs border border-slate-800 rounded-sm p-2 bg-slate-950 text-slate-200 placeholder-slate-600 focus:outline-hidden font-mono"

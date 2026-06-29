@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Cpu, RotateCcw, AlertTriangle, ShieldCheck, UserCheck, Play, 
   Activity, ChevronRight, CheckCircle, Loader2, Lock, Sparkles, 
@@ -21,13 +21,54 @@ interface GraphTraceNode {
 }
 
 export default function AgentWorkflow({ token, userRole }: AgentWorkflowProps) {
+  const [customAssets] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("indus_assets");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const incidentOptions = customAssets.length > 0 ? customAssets.map((asset, index) => {
+    let alertText = "";
+    let promptText = "";
+    if (asset.type === "boiler") {
+      alertText = `${asset.name} structural Steam Overpressure reported (${asset.metricValue} ${asset.metricUnit}) - flashing critical red.`;
+      promptText = `${asset.name} experienced steam pressure spike of ${asset.metricValue} ${asset.metricUnit}. Identify the root cause, verify ASME compliance rules, and construct operational guidelines.`;
+    } else if (asset.type === "turbine") {
+      alertText = `${asset.name} bearing vibration registering anomalous amplitude of ${asset.metricValue} ${asset.metricUnit}.`;
+      promptText = `${asset.name} registered anomalous bearing vibration spike of ${asset.metricValue} ${asset.metricUnit}. Analyze mechanical fatigue, verify ISO standards, and find past lessons.`;
+    } else if (asset.type === "valve") {
+      alertText = `${asset.name} feedback reporting mechanical safety state: ${asset.metricValue === 0 ? "NOMINAL" : asset.metricValue === 1 ? "STIFF" : "JAMMED"}.`;
+      promptText = `${asset.name} reported mechanical state: ${asset.metricValue === 0 ? "NOMINAL" : asset.metricValue === 1 ? "STIFF" : "JAMMED"}. Diagnose spring stiffness/corrosion, verify OSHA requirements, and recommend bypass instructions.`;
+    } else {
+      alertText = `${asset.name} cavitation coefficient registering anomaly of ${asset.metricValue}.`;
+      promptText = `${asset.name} cavitation anomaly registered at ${asset.metricValue}. Identify root cause, verify fluid standards, and check past repair records.`;
+    }
+
+    return {
+      id: `inc-${index + 1}`,
+      name: `${asset.name} Event`,
+      alert: alertText,
+      telemetry: `TEL-${2000 + index * 105}`,
+      prompt: promptText
+    };
+  }) : [
+    {
+      id: "inc-1",
+      name: "General Mechanical System Alert",
+      alert: "System telemetry anomaly detected. Please register custom assets to generate dynamic physical sensor alarms.",
+      telemetry: "TEL-GENERIC",
+      prompt: "Autonomous multi-agent system stands ready. Type standard operator instructions or register physical devices to execute context-aware verification."
+    }
+  ];
+
   // Modes: "orchestrator" or "sequential"
   const [workflowMode, setWorkflowMode] = useState<"orchestrator" | "sequential">("orchestrator");
 
   // Dynamic Orchestrator States
-  const [orchestratorQuery, setOrchestratorQuery] = useState(
-    "Boiler B-201 experienced steam pressure spike of 14.2 Bar. Identify the root cause, verify ASME compliance rules, check similar historical lessons, and construct operational guidelines."
-  );
+  const [orchestratorQuery, setOrchestratorQuery] = useState(incidentOptions[0].prompt);
   const [isOrchestrating, setIsOrchestrating] = useState(false);
   const [orchestratorResult, setOrchestratorResult] = useState<{
     activeAgents: string[];
@@ -38,41 +79,23 @@ export default function AgentWorkflow({ token, userRole }: AgentWorkflowProps) {
   const [selectedTraceNode, setSelectedTraceNode] = useState<GraphTraceNode | null>(null);
 
   // Sequential Simulator States
-  const [telemetryId, setTelemetryId] = useState("TEL-2489");
-  const [alertMessage, setAlertMessage] = useState(
-    "Boiler B-201 structural Steam Overpressure reported (14.2 Bar gauge) - Sensor S-Boiler-P1 flashing critical red."
-  );
+  const [telemetryId, setTelemetryId] = useState(incidentOptions[0].telemetry);
+  const [alertMessage, setAlertMessage] = useState(incidentOptions[0].alert);
   const [isRunning, setIsRunning] = useState(false);
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [finalAssessment, setFinalAssessment] = useState("");
   const [workflowStatus, setWorkflowStatus] = useState("");
 
-  const hasDiagnosePermission = userRole !== UserRole.Auditor;
-
-  const incidentOptions = [
-    {
-      id: "inc-1",
-      name: "Boiler B-201 Overpressure Event",
-      alert: "Boiler B-201 structural Steam Overpressure reported (14.2 Bar gauge) - Sensor S-Boiler-P1 flashing critical red.",
-      telemetry: "TEL-2489",
-      prompt: "Boiler B-201 experienced steam pressure spike of 14.2 Bar. Identify the root cause, verify ASME compliance rules, check similar historical lessons, and construct operational guidelines."
-    },
-    {
-      id: "inc-2",
-      name: "Thermocouple Temperature Spike",
-      alert: "Sensor S-Boiler-T1 registering anomalous temperature reading of 435C. Exceeds warning thresholds.",
-      telemetry: "TEL-8012",
-      prompt: "Sensor S-Boiler-T1 registering temperature spike of 435C on turbine GT-400 bearings. Analyze thermal breakdown, verify ISO risk limits, and find past bearing memory logs."
-    },
-    {
-      id: "inc-3",
-      name: "Valve Actuator Unresponsive Fault",
-      alert: "Safety Valve V-101 fail-safe feedback reporting mechanical spring jam during quarterly automatic check run.",
-      telemetry: "TEL-4091",
-      prompt: "Safety Valve V-101 reported spring mechanical jam. Diagnose root cause springs stiffness, verify OSHA worker safety requirements, and recommend operational bypass instructions."
+  useEffect(() => {
+    if (incidentOptions.length > 0) {
+      setOrchestratorQuery(incidentOptions[0].prompt);
+      setTelemetryId(incidentOptions[0].telemetry);
+      setAlertMessage(incidentOptions[0].alert);
     }
-  ];
+  }, [customAssets]);
+
+  const hasDiagnosePermission = userRole !== UserRole.Auditor;
 
   const selectIncident = (inc: typeof incidentOptions[0]) => {
     setTelemetryId(inc.telemetry);

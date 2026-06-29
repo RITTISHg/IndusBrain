@@ -33,26 +33,42 @@ interface Message {
   }>;
 }
 
-const PRESET_QUERIES = [
-  {
-    label: "Boiler B-201 Maintenance & Limits",
-    query: "What is the active maintenance logs and safety limits for Boiler B-201?"
-  },
-  {
-    label: "ASME Sec VIII Valve V-101 Specs",
-    query: "What ASME Section VIII compliance codes apply to Safety Valve V-101 and how must it be tested?"
-  },
-  {
-    label: "LOTO Safety Isolation Procedure",
-    query: "Provide a detailed step-by-step Lockout/Tagout (LOTO) isolation physical procedure for Boiler B-201."
-  },
-  {
-    label: "Turbine GT-400 Overspeed & Vibration",
-    query: "What are the nominal speeds, RPM limits, and radial vibration sensor thresholds for Turbine GT-400?"
-  }
-];
-
 export default function IndustrialCopilot({ token, userRole }: IndustrialCopilotProps) {
+  const [customAssets] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("indus_assets");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const dynamicQueries = customAssets.length > 0 ? customAssets.flatMap(asset => {
+    return [
+      {
+        label: `${asset.name} Limits`,
+        query: `What is the active maintenance logs and safety limits for ${asset.name}?`
+      },
+      {
+        label: `${asset.name} LOTO procedure`,
+        query: `Provide a detailed step-by-step Lockout/Tagout (LOTO) isolation physical procedure for ${asset.name}.`
+      }
+    ];
+  }).slice(0, 4) : [
+    {
+      label: "Regulatory LOTO safety guidelines",
+      query: "Provide a detailed step-by-step Lockout/Tagout (LOTO) isolation physical procedure for general high-pressure systems."
+    },
+    {
+      label: "Pressure vessel maintenance codes",
+      query: "What is the typical active maintenance log schedule and safety limits for standard industrial pressure vessel systems?"
+    },
+    {
+      label: "ASME compliance code details",
+      query: "What ASME Section VIII compliance codes apply to industrial safety valves and how must they be physically calibrated and tested?"
+    }
+  ];
+
   const [query, setQuery] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -268,7 +284,7 @@ export default function IndustrialCopilot({ token, userRole }: IndustrialCopilot
           <div className="mb-3.5">
             <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 block mb-2">Preset Copilot Inquiries:</span>
             <div className="flex flex-wrap gap-2">
-              {PRESET_QUERIES.map((preset, index) => (
+              {dynamicQueries.map((preset, index) => (
                 <button
                   key={index}
                   type="button"

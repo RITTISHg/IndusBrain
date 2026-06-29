@@ -541,7 +541,7 @@ export default function GraphExplorer({ userRole, token }: GraphExplorerProps) {
             value={rawText}
             onChange={e => setRawText(e.target.value)}
             disabled={!hasWritePermission || isExtracting}
-            placeholder="e.g., Water Valve V-102 belongs to Boiler B-201. S-Boiler-P1 monitors pressure values on steam vents."
+            placeholder="e.g., Water Valve V-102 belongs to the main steam reservoir. Sensor S-1 monitors pressure values on steam vents."
             className="w-full h-24 p-2.5 text-xs border border-slate-800 rounded-sm font-mono focus:outline-hidden focus:ring-1 focus:ring-indigo-500 disabled:bg-slate-950/50 bg-slate-950 text-slate-250 placeholder-slate-600"
           />
 
